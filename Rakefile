@@ -105,3 +105,16 @@ namespace :doc do
 end
 
 task :default => [:unit_tests]
+
+
+
+# don't push to rubygems when running 'rake release'
+ENV['gem_push'] = 'no'
+
+require "bundler/gem_tasks"
+
+# add push to our private gem server here, since we are no longer pushing to rubygems
+Rake::Task["release"].enhance do
+  spec = Gem::Specification::load(Dir.glob("*.gemspec").first)
+  sh "gem push pkg/#{spec.name}-#{spec.version}.gem --host http://gems.hq.practicefusion.com"
+end
