@@ -9,6 +9,7 @@ Gem::Specification.new do |s|
   s.version = "1.1.1.pre.1"
 
   s.required_rubygems_version = Gem::Requirement.new("> 1.3.1") if s.respond_to? :required_rubygems_version=
+  s.metadata = { "allowed_push_host" => "http://gems.hq.practicefusion.com" } if s.respond_to? :metadata=
   s.require_paths = ["lib"]
   s.authors = ["Kannan Manickam"]
   s.date = "2014-11-12"
