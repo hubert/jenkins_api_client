@@ -353,6 +353,7 @@ module JenkinsApi
               notification_email(params, xml) if params[:notification_email]
               # Build portion of XML that adds skype notification
               skype_notification(params, xml) if params[:skype_targets]
+              artifact_archiver(params[:artifact_archiver], xml)
             end
             xml.buildWrappers
           end
@@ -427,6 +428,40 @@ module JenkinsApi
           n_xml.xpath("//publishers").first.add_child(skype_xml)
           post_config(params[:name], n_xml.to_xml)
         end
+      end
+
+      # Configure post-build step to archive artifacts
+      #
+      # @param params [Hash] parameters controlling how artifacts are archived
+      #
+      # @option params [String] :artifact_files
+      #   pattern or names of files to archive
+      # @option params [String] :excludes
+      #   pattern or names of files to exclude
+      # @option params [Boolean] :fingerprint (false)
+      #   fingerprint the archives
+      # @option params [Boolean] :allow_empty_archive (false)
+      #   whether to allow empty archives
+      # @option params [Boolean] :only_if_successful (false)
+      #   only archive if successful
+      # @option params [Boolean] :default_excludes (false)
+      #   exclude defaults automatically
+      #
+      # @return [Nokogiri::XML::Builder] 
+      #
+      def artifact_archiver(artifact_params, xml)
+        return xml if artifact_params.nil?
+
+        xml.send('hudson.tasks.ArtifactArchiver') do |x|
+          x.artifacts artifact_params.fetch(:artifact_files) { '' }
+          x.excludes artifact_params.fetch(:excludes) { '' }
+          x.fingerprint artifact_params.fetch(:fingerprint) { false }
+          x.allowEmptyArchive artifact_params.fetch(:allow_empty_archive) { false }
+          x.onlyIfSuccessful artifact_params.fetch(:only_if_successful) { false }
+          x.defaultExcludes artifact_params.fetch(:default_excludes) { false }
+        end
+
+        xml
       end
 
       # Rename a job given the old name and new name
@@ -802,11 +837,13 @@ module JenkinsApi
         msg << " with parameters: #{params.inspect}" unless params.empty?
         @logger.info msg
 
-        # Best-guess build-id
-        # This is only used if we go the old-way below... but we can use this number to detect if multiple
-        # builds were queued
-        current_build_id = get_current_build_number(job_name)
-        expected_build_id = current_build_id > 0 ? current_build_id + 1 : 1
+        if (opts['build_start_timeout'] || 0) > 0
+          # Best-guess build-id
+          # This is only used if we go the old-way below... but we can use this number to detect if multiple
+          # builds were queued
+          current_build_id = get_current_build_number(job_name)
+          expected_build_id = current_build_id > 0 ? current_build_id + 1 : 1
+        end
 
         if (params.nil? or params.empty?)
           response = @client.api_post_request("/job/#{path_encode job_name}/build",
@@ -1453,6 +1490,20 @@ module JenkinsApi
         end
 
         result
+      end
+
+      #A Method to find artifacts path from the Current Build
+      #
+      # @param [String] job_name
+      #
+      def find_artifact(job_name)
+        current_build_number  = get_current_build_number(job_name)
+        job_path              = "job/#{path_encode job_name}/"
+        response_json         = @client.api_get_request("/#{job_path}#{current_build_number}")
+        relative_build_path   = response_json['artifacts'][0]['relativePath']
+        jenkins_path          = response_json['url']
+        artifact_path         = URI.escape("#{jenkins_path}artifact/#{relative_build_path}")
+        return artifact_path
       end
 
       private

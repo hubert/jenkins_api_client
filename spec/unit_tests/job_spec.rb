@@ -384,15 +384,11 @@ describe JenkinsApi::Client::Job do
       describe "#build" do
         # First tests confirm the build method works the same as it used to
         it "accepts the job name and builds the job" do
-          @client.should_receive(:api_get_request).with(
-            "/job/test_job").and_return({})
           @client.should_receive(:api_post_request).with(
             "/job/test_job/build", {}, true).and_return(FakeResponse.new(302))
           @job.build("test_job").should == '302'
         end
         it "accepts the job name with params and builds the job" do
-          @client.should_receive(:api_get_request).with(
-            "/job/test_job").and_return({})
           @client.should_receive(:api_post_request).with(
             "/job/test_job/buildWithParameters",
             {:branch => 'feature/new-stuff'},
@@ -666,6 +662,57 @@ describe JenkinsApi::Client::Job do
 
           xml_config = Nokogiri::XML(xml)
           expect(xml_config.at_css('triggers').children).to be_empty
+        end
+      end
+
+      context 'artifact archiver build step' do
+        context 'given artifact_archiver params' do
+          it 'configures with given params' do
+            artifact_archiver_params = {
+              artifact_files: '**',
+              excludes: 'foo',
+              fingerprint: true,
+              allow_empty_archive: true,
+              only_if_successful: true,
+              default_excludes: true,
+            }
+            xml = @job.build_freestyle_config(
+              name: 'foobar',
+              artifact_archiver: artifact_archiver_params,
+            )
+            xml_config = Nokogiri::XML(xml)
+
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/artifacts').content).to eql('**')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/excludes').content).to eql('foo')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/fingerprint').content).to eql('true')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/allowEmptyArchive').content).to eql('true')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/onlyIfSuccessful').content).to eql('true')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/defaultExcludes').content).to eql('true')
+          end
+
+          it 'configures with defaults for non-specified options' do
+            xml = @job.build_freestyle_config(
+              name: 'foobar',
+              artifact_archiver: {},
+            )
+            xml_config = Nokogiri::XML(xml)
+
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/artifacts').content).to eql('')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/excludes').content).to eql('')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/fingerprint').content).to eql('false')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/allowEmptyArchive').content).to eql('false')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/onlyIfSuccessful').content).to eql('false')
+            expect(xml_config.at_xpath('//publishers/hudson.tasks.ArtifactArchiver/defaultExcludes').content).to eql('false')
+          end
+        end
+
+        context 'not given artifact_archiver params' do
+          it 'omits hudson.tasks.ArtifactArchiver tag' do
+            xml = @job.build_freestyle_config(name: 'foobar')
+            xml_config = Nokogiri::XML(xml)
+
+            expect(xml_config.xpath('//publishers/hudson.tasks.ArtifactArchiver')).to be_empty
+          end
         end
       end
     end

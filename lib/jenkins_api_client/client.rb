@@ -74,7 +74,8 @@ module JenkinsApi
     #
     # @option args [String] :server_ip the IP address of the Jenkins CI server
     # @option args [String] :server_port the port on which the Jenkins listens
-    # @option args [String] :server_url the full URL address of the Jenkins CI server (http/https). This can include username/password. :username/:password options will override any user/pass value in the URL
+    # @option args [String] :server_url the full URL address of the Jenkins CI server (http/https). This can include
+    #   username/password. :username/:password options will override any user/pass value in the URL
     # @option args [String] :username the username used for connecting to the server (optional)
     # @option args [String] :password the password or API Key for connecting to the CI server (optional)
     # @option args [String] :password_base64 the password with base64 encoded format for connecting to the CI
@@ -247,6 +248,27 @@ module JenkinsApi
         " @timeout=#{@timeout.inspect}>," +
         " @http_open_timeout=#{@http_open_timeout.inspect}>," +
         " @http_read_timeout=#{@http_read_timeout.inspect}>"
+    end
+
+    # Connects to the server and downloads artifacts to a specified location
+    #
+    # @param [String] job_name
+    # @param [String] filename location to save artifact
+    #
+    def get_artifact(job_name,filename)
+      @artifact = job.find_artifact(job_name)
+      uri = URI.parse(@artifact)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      http.use_ssl = true
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request.basic_auth(@username, @password)
+      response = http.request(request)
+      if response.code == "200"
+        File.write(File.expand_path(filename), response.body)
+      else
+        raise "Couldn't get the artifact"
+      end
     end
 
     # Connects to the Jenkins server, sends the specified request and returns
