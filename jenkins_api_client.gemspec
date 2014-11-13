@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
     "CHANGELOG.md",
     "CONTRIBUTORS.md",
     "Gemfile",
+    "Guardfile",
     "LICENCE",
     "README.md",
     "Rakefile",
