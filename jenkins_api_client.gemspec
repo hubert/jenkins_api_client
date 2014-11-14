@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.metadata = { "allowed_push_host" => "http://gems.hq.practicefusion.com" } if s.respond_to? :metadata=
   s.require_paths = ["lib"]
   s.authors = ["Kannan Manickam"]
-  s.date = "2014-11-13"
+  s.date = "2014-11-14"
   s.description = "\nThis is a simple and easy-to-use Jenkins Api client with features focused on\nautomating Job configuration programaticaly and so forth"
   s.email = ["arangamani.kannan@gmail.com"]
   s.executables = ["jenkinscli"]
